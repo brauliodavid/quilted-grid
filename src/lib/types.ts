@@ -12,9 +12,9 @@ export type ItemClickPayload = {
   event: MouseEvent;
 };
 
-export type QuiltedOptions = Partial<BaseOptions>;
+// export type QuiltedOptions = Partial<BaseOptions>;
 
-export type BaseOptions = {
+export type QuiltedOptions = {
   cols: number | ((containerWidth: number) => number);
   rowHeight: number;
   gap: number;

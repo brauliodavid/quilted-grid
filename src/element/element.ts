@@ -1,5 +1,5 @@
 import { QuiltedGrid as QG } from '../index';
-import type { QuiltedTile, QuiltedOptions, BaseOptions } from '../index';
+import type { QuiltedTile, QuiltedOptions } from '../index';
 
 export type ElementOptions = Partial<QuiltedOptions>;
 
@@ -130,7 +130,7 @@ export class QuiltedGridElement extends HTMLElement {
     this.#ensure();
   }
 
-  patchOptions(patch: Partial<BaseOptions>) { this.options = patch; }
+  patchOptions(patch: Partial<QuiltedOptions>) { this.options = patch; }
 
   /* ---------- Internals ---------- */
   #ensure() {

@@ -1,11 +1,11 @@
 import { injectCSS } from "./css";
-import type { BaseOptions, QuiltedOptions, QuiltedTile } from "./types";
+import type { QuiltedOptions, QuiltedTile } from "./types";
 import { readInt } from "./utils";
 
 // src/lib/quilted.ts
 export class QuiltedGrid {
   private el: HTMLElement;
-  private opts: BaseOptions;
+  private opts: Partial<QuiltedOptions>;
   private ro?: ResizeObserver;
   private mounted = false;
   private _tiles: QuiltedGridTile[];
@@ -40,7 +40,7 @@ export class QuiltedGrid {
       injectDefaultCSS: true,
       classNames: { root: 'qg-root', tile: 'qg-tile' },
       ...opts
-    } as BaseOptions;
+    };
 
     this.el = el;
 
@@ -339,12 +339,12 @@ export class QuiltedGrid {
 export class QuiltedGridTile {
   el: HTMLElement;
 
-  private opts: BaseOptions;
+  private opts: Partial<QuiltedOptions>;
   private data: QuiltedTile;
   private index: number;
 
   /** Use factories below */
-  private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: BaseOptions) {
+  private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: Partial<QuiltedOptions>) {
     this.opts = opts;
     this.el = el;
     this.data = model;
@@ -368,14 +368,14 @@ export class QuiltedGridTile {
   }
 
   /** Create from a data model (no existing node) */
-  static fromModel(model: QuiltedTile, index: number, opts: BaseOptions) {
+  static fromModel(model: QuiltedTile, index: number, opts: Partial<QuiltedOptions>) {
     const el = document.createElement('div');
     el.className = opts.classNames.tile;
     return new QuiltedGridTile(el, model, index, opts);
   }
 
   /** Adopt an existing element */
-  static fromElement(wrapper: HTMLElement, index: number, opts: BaseOptions) {
+  static fromElement(wrapper: HTMLElement, index: number, opts: Partial<QuiltedOptions>) {
     const el = wrapper as HTMLElement;
     const model = QuiltedGridTile.elementToModel(el);
     return new QuiltedGridTile(el, model, index, opts);
