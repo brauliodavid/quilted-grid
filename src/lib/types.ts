@@ -15,13 +15,13 @@ export type ItemClickPayload = {
 // export type QuiltedOptions = Partial<BaseOptions>;
 
 export type QuiltedOptions = {
-  cols: number | ((containerWidth: number) => number);
-  rowHeight: number;
-  gap: number;
-  autoResize: boolean;
-  injectDefaultCSS: boolean;
+  cols?: number | ((containerWidth: number) => number);
+  rowHeight?: number;
+  gap?: number;
+  autoResize?: boolean;
+  injectDefaultCSS?: boolean;
   onTileRemove?: (ev: {index: number, tile: QuiltedGridTile}) => void;
-  classNames: { root: string; tile: string };
+  classNames?: { root: string; tile: string };
   onTileClick?: (payload: ItemClickPayload) => void;
 };
 
