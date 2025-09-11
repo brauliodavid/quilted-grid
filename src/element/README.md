@@ -7,7 +7,7 @@ Custom elements for declarative authoring:
 
 ## Install
 
-npm i quilted-grid
+`npm i quilted-grid`
 
 ## Register
 
@@ -15,7 +15,7 @@ import { register } from 'quilted-grid/element';
 register();
 
 ## Usage
-
+```html
 <quilted-grid style="width:100%">
   <quilted-tile rows="2" cols="3">
     <img src="/a.jpg">
@@ -24,6 +24,7 @@ register();
     <img src="/b.jpg">
   </quilted-tile>
 </quilted-grid>
+```
 
 ## Tile attributes
 
@@ -34,6 +35,7 @@ Changing attributes dispatches tile-attrs-changed.
 
 ## Grid element API
 
+```javascript
 const grid = document.querySelector('quilted-grid');
 
 grid.appendTile(tileEl);
@@ -48,6 +50,7 @@ grid.removeAt(0);
 grid.patchOptions({ gap: 8 });
 grid.relayout();
 grid.refresh();
+```
 
 ## Events
 
