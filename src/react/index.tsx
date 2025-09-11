@@ -7,7 +7,7 @@ import type { QuiltedTile as QT, QuiltedOptions } from "../index";
 export type QuiltedGridRef = { readonly grid: QG | null };
 export type QuiltedGridProps = React.HTMLAttributes<HTMLDivElement> & {
   data?: QT[];
-  options?: Partial<QuiltedOptions>;
+  options?: QuiltedOptions;
 };
 export type QuiltedTileProps = React.HTMLAttributes<HTMLDivElement> & {
   rows?: number;
