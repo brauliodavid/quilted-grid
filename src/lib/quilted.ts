@@ -126,7 +126,8 @@ export class QuiltedGrid {
     // Ensure order + update spans
     for (let i = 0; i < this.tiles.length; i++) {
       const tile = this.tiles[i];
-      tile.setIndex(i).update(); // no args; uses current model
+      tile.setIndex(i)
+      tile.update(); // no args; uses current model
 
       const ref = this.el.children[i] || null;
       if (tile.el.parentNode !== this.el) {
@@ -370,10 +371,9 @@ export class QuiltedGridTile {
   /** Read-only access to current model */
   getData(): QuiltedTile { return this.data; }
 
-  setIndex(i: number) {
+  setIndex(i: number): void {
     this.index = i;
     this.el.dataset.index = String(i);
-    return this;
   }
 
   update(patch?: Partial<QuiltedTile>): void {
