@@ -100,7 +100,7 @@ export class QuiltedGridElement extends HTMLElement {
   set data(v: QuiltedTile[]) {
     this.#data = Array.isArray(v) ? v : [];
     if (this.#grid && !this.#domDriven) {
-      this.#grid.setData(this.#data);
+      this.#grid.tiles = this.#data;
     }
   }
 
@@ -139,7 +139,8 @@ export class QuiltedGridElement extends HTMLElement {
     // 1) Create the core grid
     //    If DOM-driven, pass empty data — your QG should bootstrap from children.
     const initialData = this.#domDriven ? [] : this.#data;
-    this.#grid = new QG(this, initialData as any, this.#options);
+    this.#grid = new QG(this, this.#options);
+    this.#grid.tiles = initialData
 
     // 2) Bridge built-in events to dash-case for ergonomics
     this.addEventListener('tileClick' as any, (ev: Event) => {

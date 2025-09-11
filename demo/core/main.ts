@@ -9,7 +9,7 @@ const btn = document.getElementById('btn')!;
 const btn2 = document.getElementById('btn2')!;
 const btn3 = document.getElementById('btn3')!;
 const btn4 = document.getElementById('btn4')!;
-const g = new QuiltedGrid(el, [], {
+const g = new QuiltedGrid(el, {
   cols: 3,
   rowHeight: 140,
   gap: 4,
@@ -20,7 +20,7 @@ const g = new QuiltedGrid(el, [], {
 
 btn.addEventListener('click', () => {
   g.animate(() => {
-    g.tiles[0].applyTile({ rows: 1, cols: 1 });
+    g.tiles[0].update({ rows: 1, cols: 1 });
   });
 });
 
@@ -93,8 +93,7 @@ btn2.addEventListener('click', () => {
 });
 
 btn3.addEventListener('click', () => {
-  g.destroy()
-  g.render()
+  g.refresh()
 });
 
 btn4.addEventListener('click', () => {
