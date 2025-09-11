@@ -29,7 +29,7 @@ export class QuiltedGrid {
     return this._tiles;
   }
 
-  constructor(el: HTMLElement, opts: Partial<BaseOptions> = {}) {
+  constructor(el: HTMLElement, opts: Partial<QuiltedOptions> = {}) {
     if (!el) throw new Error('container element required');
 
     this.opts = {
@@ -209,10 +209,10 @@ export class QuiltedGrid {
   }
 
   /** Remove one tile/tile by index. Optionally animates the reflow of remaining tiles. */
-  removeTileAt(index: number, opts: { animate?: boolean } = {}) {
+  removeTileAt(index: number, opts: { animate?: boolean } = {}): void {
     const { animate = true } = opts;
     const tile = this.tiles[index];
-    if (!tile) return this;
+    if (!tile) return;
 
     const doRemove = () => {
       const [removed] = this.tiles.splice(index, 1); // remove once
@@ -227,8 +227,6 @@ export class QuiltedGrid {
     this.el.dispatchEvent(new CustomEvent('tileRemoved', {
       detail: { index, tile }, bubbles: true, cancelable: true, composed: true
     }));
-
-    return this;
   }
 
   /** Animate any synchronous DOM mutation that changes layout */
@@ -335,8 +333,6 @@ export class QuiltedGrid {
 
     // 4) Re-apply grid styling and spans
     this.render();
-
-    return this;
   }
 }
 
