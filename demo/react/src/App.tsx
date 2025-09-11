@@ -8,11 +8,31 @@ const images: QT[] = items
 export default function App() {
   const ref = useRef<QuiltedGridRef>(null);
   const [gallery, setGallery] = useState<QG>(null);
+  const [ordered, setOrdered] = useState<any[]>([])
 
   useEffect(() => {
     if(ref?.current){
       setGallery(ref.current.grid as any)
     }
+
+    setTimeout(() => {
+      setOrdered([
+        {rows: 1, cols: 2},
+        {rows: 1, cols: 1},
+        {rows: 3, cols: 2},
+        {rows: 1, cols: 1},
+      ])
+    }, 1000)
+
+    setTimeout(() => {
+      setOrdered([
+        {rows: 1, cols: 2},
+        {rows: 1, cols: 1},
+        {rows: 3, cols: 2},
+        {rows: 1, cols: 1},
+        {rows: 1, cols: 2},
+      ])
+    }, 4000)
   }, [ref])
 
   const add = () => {
@@ -37,15 +57,10 @@ export default function App() {
         options={{ cols: 4, rowHeight: 121, gap: 2, injectDefaultCSS: true }}
         style={{ width: "100%" }}
       >
-        <QuiltedTile rows={2} cols={3} onClick={onClick}>
+        {ordered.map((p: any, i) => 
+          <QuiltedTile key={i} rows={p.rows} cols={p.cols} onClick={onClick}>
            <img src="https://images.unsplash.com/photo-1551782450-a2132b4ba21d"/>
-        </QuiltedTile>
-        <QuiltedTile rows={1} cols={1}>
-           <img src="https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"/>
-        </QuiltedTile>
-        <QuiltedTile rows={2} cols={3}>
-           <img src="https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"/>
-        </QuiltedTile>
+          </QuiltedTile>)}
       </QuiltedGrid>
     </div>
   );
