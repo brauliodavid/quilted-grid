@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+  <head>
+    <script type="module">
+      import { register } from 'quilted-grid/element';
+      import images from '../dummy.json'
+      register(); // defines <quilted-grid>
+
+      function createQuiltImgTile({ src = '', rows = 1, cols = 1} = {}) {
+        const t = document.createElement('quilted-tile');
+        t.setAttribute('rows', rows);
+        t.setAttribute('cols', cols);
+
+        const img = document.createElement('img');
+        img.src = src
+        t.appendChild(img);
+
+        // t.appendChild(img);
+        return t;
+      }
+
+      const el = document.querySelector('quilted-grid');
+      // el.data = images;
+      const tiles = images.map(img => createQuiltImgTile({src: img.src, rows: img.rows, cols: img.cols}))
+      tiles.map(t => el.appendTile(t))
+      
+      el.options = {
+        gap: 2
+      }
+
+      el.patchOptions({
+        onTileClick: ({ tile, index, event }) => {
+          console.log('onTileClick callback', index, tile, event.type);
+        },
+        onTileRemove: ({ index, image }) => {
+          console.log('onTileRemove callback', index, image);
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div style="width: 480px">
+      <quilted-grid id="grid" style="width:100%">
+        <!-- <quilted-tile rows="2" cols="3">
+          <img src="https://images.unsplash.com/photo-1551782450-a2132b4ba21d"/>
+        </quilted-tile>
+        <quilted-tile rows="1" cols="2">
+          <img src="https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"/>
+        </quilted-tile>
+        <quilted-tile rows="1" cols="2">
+          <img src="https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"/>
+        </quilted-tile>
+        <quilted-tile rows="1" cols="2">
+          <img src="https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"/>
+        </quilted-tile>
+        <quilted-tile rows="1" cols="2">
+          <img src="https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"/>
+        </quilted-tile> -->
+      </quilted-grid>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,152 @@
+# .github/workflows/publish-release.yml
+name: "Publish New Release"
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
+
+permissions:
+  contents: write     # create releases, push tags
+  id-token: write     # npm provenance support
+  pull-requests: write
+
+jobs:
+  release:
+    name: Publish new release
+    environment: production
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == true }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Derive version from source branch: release/X.Y.Z or hotfix/X.Y.Z
+      - name: Extract version from branch name
+        id: extract
+        shell: bash
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Source branch: $BRANCH"
+          if [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          elif [[ "$BRANCH" =~ ^hotfix/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          else
+            echo "Branch name must be release/X.Y.Z or hotfix/X.Y.Z"
+            exit 1
+          fi
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Release version: $VERSION"
+
+      # Node (we'll install pnpm ourselves with Corepack)
+      - name: Set Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Ensure pnpm is installed and active
+      - name: Enable Corepack / Install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+          pnpm -v
+
+      # Cache pnpm store (fast installs)
+      - name: Get pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Set version in package.json without creating a git tag
+      - name: Set package version
+        run: pnpm pkg set version=${{ env.RELEASE_VERSION }}
+
+      # Build library (expects dist/)
+      - name: Build
+        run: pnpm run build
+
+      - name: Verify dist
+        run: test -d dist || (echo "dist/ not found. Did your build script create it?" && exit 1)
+
+      # Avoid failing on re-runs if the same version already exists on npm
+      - name: Check if version already on npm
+        id: check_npm
+        shell: bash
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VER="${{ env.RELEASE_VERSION }}"
+          echo "Package: $NAME"
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Version $VER already exists on npm. Skipping publish."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # publish only if version not on npm AND token is present
+      - name: Publish to npm
+        if: ${{ steps.check_npm.outputs.exists == 'false' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # If your package is scoped (e.g. @you/quilted-grid),
+          # ensure package.json includes: "publishConfig": { "access": "public" }
+          pnpm publish --access public --provenance --no-git-checks
+
+      # Optional: log when token missing (helps debugging)
+      - name: Skip publish (no NPM_TOKEN)
+        if: ${{ steps.check_npm.outputs.exists == 'false' }}
+        run: echo "NPM_TOKEN not set; skipping npm publish."
+
+      # Pack dist as a release asset
+      - name: Pack dist
+        run: zip -r quilted-grid-${{ env.RELEASE_VERSION }}.zip dist
+
+      # Create and push a tag matching the release version
+      - name: Push git tag
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${{ env.RELEASE_VERSION }}"
+          git push origin "${{ env.RELEASE_VERSION }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_VERSION }}
+          files: quilted-grid-${{ env.RELEASE_VERSION }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Merge main into develop branch
+        uses: thomaseizinger/create-pull-request@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          head: main
+          base: develop
+          title: Merge main into develop branch
+          body: |
+            This PR merges the main branch back into develop.
+            This happens to ensure that the updates that happend on the release branch, i.e. CHANGELOG and manifest updates are also present on the develop branch.
+      # if needed, you can checkout the latest main here, build artifacts and publish / deploy them somewhere
+      # the create-release action has an output `upload_url` output that you can use to upload assets
+

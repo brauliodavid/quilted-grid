@@ -1,0 +1,3 @@
+packages:
+  - demo/*   # your demo folder is packages/react
+  - dist/*

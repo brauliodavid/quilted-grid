@@ -1,0 +1,67 @@
+{
+  "name": "quilted-grid",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "browser": "./dist/index.js"
+    },
+    "./element": {
+      "types": "./dist/element/index.d.ts",
+      "import": "./dist/element/index.js",
+      "default": "./dist/element/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "element": ["dist/element/index.d.ts"],
+      "react":   ["dist/react/index.d.ts"]
+    }
+  },
+  "unpkg": "dist/index.global.js",
+  "jsdelivr": "dist/index.global.js",
+  "scripts": {
+    "build": "pnpm run build:core && pnpm run build:element && pnpm run build:react",
+    "build:core": "tsup src/index.ts --format esm,cjs,iife --global-name QuiltedGrid --dts --sourcemap --minify && cp src/lib/style.css dist/style.css",
+    "build:element": "tsup src/element/index.ts --dts --format esm --target es2020 --sourcemap --out-dir dist/element",
+    "build:react": "tsup src/react/index.tsx --dts --format esm --target es2020 --sourcemap --out-dir dist/react",
+    "dev": "tsup src/index.ts --format esm,cjs,iife --global-name QuiltedGrid --dts --sourcemap --watch",
+    "preview": "vite demo/core",
+    "start": "vite demo/core",
+    "start:element": "vite demo/element",
+    "start:react": "vite demo/react"
+  },
+  "devDependencies": {
+    "@types/node": "22.0.0",
+    "@types/react": "18.3.24",
+    "@types/react-dom": "18.3.7",
+    "tsup": "8.0.0",
+    "typescript": "5.9.2",
+    "vite": "5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brauliodavid/quilted-grid"
+  },
+  "description": "Quilted grid layout for HTML elements",
+  "author": "Braulio David",
+  "peerDependencies": {
+    "react": ">=17",
+    "react-dom": ">=17"
+  }
+}

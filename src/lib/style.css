@@ -1,0 +1,17 @@
+.quilt-root { display: grid; grid-auto-flow: dense; }
+.quilt-item {
+  position: relative;
+  overflow: hidden;
+  /* border-radius: 8px; */
+}
+.quilt-item > img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 6px 8px;
+}

@@ -1,0 +1,58 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 5.5.0)'
+        required: true
+jobs:
+  draft-release:
+    name: Draft a New Release
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create release branch
+        run: git checkout -b release/${{ github.event.inputs.version }}
+
+      - name: Configure Git user
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email noreply@github.com
+
+      - name: Update changelog
+        uses: thomaseizinger/keep-a-changelog-new-release@master
+        with:
+          version: ${{ github.event.inputs.version }}
+      
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Bump version in package.json
+        run: pnpm version --new-version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Commit changes
+        id: commit-changes
+        run: |
+          git add CHANGELOG.md package.json
+          git commit -m "Prepare release ${{ github.event.inputs.version }}"
+
+      - name: Push release branch
+        run: git push origin release/${{ github.event.inputs.version }}
+
+      - name: Create pull request
+        uses: thomaseizinger/create-pull-request@master
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          head: release/${{ github.event.inputs.version }}
+          base: main
+          title: Release version ${{ github.event.inputs.version }}
+          body: |
+            Hi @${{ github.actor }}!
+            This PR was created to prepare for release ${{ github.event.inputs.version }}.
+            Merging this PR will create a GitHub release and publish all associated changes.
