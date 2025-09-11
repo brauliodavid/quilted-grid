@@ -1,6 +1,6 @@
 {
   "name": "quilted-grid",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -24,8 +24,12 @@
   },
   "typesVersions": {
     "*": {
-      "element": ["dist/element/index.d.ts"],
-      "react":   ["dist/react/index.d.ts"]
+      "element": [
+        "dist/element/index.d.ts"
+      ],
+      "react": [
+        "dist/react/index.d.ts"
+      ]
     }
   },
   "unpkg": "dist/index.global.js",
