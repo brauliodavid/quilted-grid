@@ -5,7 +5,7 @@ import { readInt } from "./utils";
 // src/lib/quilted.ts
 export class QuiltedGrid {
   private el: HTMLElement;
-  private opts: Partial<QuiltedOptions>;
+  private opts: QuiltedOptions;
   private ro?: ResizeObserver;
   private mounted = false;
   private _tiles: QuiltedGridTile[];
@@ -29,7 +29,7 @@ export class QuiltedGrid {
     return this._tiles;
   }
 
-  constructor(el: HTMLElement, opts: Partial<QuiltedOptions> = {}) {
+  constructor(el: HTMLElement, opts: QuiltedOptions = {}) {
     if (!el) throw new Error('container element required');
 
     this.opts = {
@@ -60,7 +60,7 @@ export class QuiltedGrid {
     );
   }
 
-  patchOptions(patch: Partial<QuiltedOptions>) { 
+  patchOptions(patch: QuiltedOptions) { 
     Object.assign(this.opts, patch); 
     this.render();
   }
@@ -339,12 +339,12 @@ export class QuiltedGrid {
 export class QuiltedGridTile {
   el: HTMLElement;
 
-  private opts: Partial<QuiltedOptions>;
+  private opts: QuiltedOptions;
   private data: QuiltedTile;
   private index: number;
 
   /** Use factories below */
-  private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: Partial<QuiltedOptions>) {
+  private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: QuiltedOptions) {
     this.opts = opts;
     this.el = el;
     this.data = model;
@@ -368,14 +368,14 @@ export class QuiltedGridTile {
   }
 
   /** Create from a data model (no existing node) */
-  static fromModel(model: QuiltedTile, index: number, opts: Partial<QuiltedOptions>) {
+  static fromModel(model: QuiltedTile, index: number, opts: QuiltedOptions) {
     const el = document.createElement('div');
     el.className = opts.classNames.tile;
     return new QuiltedGridTile(el, model, index, opts);
   }
 
   /** Adopt an existing element */
-  static fromElement(wrapper: HTMLElement, index: number, opts: Partial<QuiltedOptions>) {
+  static fromElement(wrapper: HTMLElement, index: number, opts: QuiltedOptions) {
     const el = wrapper as HTMLElement;
     const model = QuiltedGridTile.elementToModel(el);
     return new QuiltedGridTile(el, model, index, opts);
