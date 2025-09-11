@@ -11,35 +11,36 @@ export default function App() {
   const [ordered, setOrdered] = useState<any[]>([])
 
   useEffect(() => {
-    if(ref?.current){
+    if(ref){
       setGrid(ref.current.grid as any)
+      setOrdered([
+        {rows: 1, cols: 2},
+        {rows: 1, cols: 1},
+        {rows: 3, cols: 2},
+        {rows: 1, cols: 1},
+      ])
+
+      setTimeout(() => {
+        setOrdered([
+          {rows: 3, cols: 1},
+          {rows: 1, cols: 1},
+          {rows: 2, cols: 2},
+          {rows: 2, cols: 1},
+          {rows: 1, cols: 2},
+        ])
+      }, 2000)
     }
-
-    setTimeout(() => {
-      setOrdered([
-        {rows: 1, cols: 2},
-        {rows: 1, cols: 1},
-        {rows: 3, cols: 2},
-        {rows: 1, cols: 1},
-      ])
-    }, 1000)
-
-    setTimeout(() => {
-      setOrdered([
-        {rows: 1, cols: 2},
-        {rows: 1, cols: 1},
-        {rows: 3, cols: 2},
-        {rows: 1, cols: 1},
-        {rows: 1, cols: 2},
-      ])
-    }, 4000)
   }, [ref])
+
+  useEffect(() => {
+
+  }, [ordered])
 
   const add = () => {
     grid?.addTile(images[2])
   };
 
-  const relayout = () => {
+  const refresh = () => {
     grid.refresh()
   };
 
@@ -50,7 +51,7 @@ export default function App() {
   return (
     <div style={{'width': '428px'}}>
       <button onClick={add}>Add</button>
-      <button onClick={relayout}>Relayout</button>
+      <button onClick={refresh}>Refresh</button>
       <QuiltedGrid
         ref={ref}
         options={{ cols: 4, rowHeight: 121, gap: 2, injectDefaultCSS: true }}

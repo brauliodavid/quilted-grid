@@ -367,20 +367,6 @@ export class QuiltedGridTile {
     this.setIndex(this.index);
   }
 
-  /** Create from a data model (no existing node) */
-  static fromModel(model: QuiltedTile, index: number, opts: QuiltedOptions) {
-    const el = document.createElement('div');
-    el.className = opts.classNames.tile;
-    return new QuiltedGridTile(el, model, index, opts);
-  }
-
-  /** Adopt an existing element */
-  static fromElement(wrapper: HTMLElement, index: number, opts: QuiltedOptions) {
-    const el = wrapper as HTMLElement;
-    const model = QuiltedGridTile.elementToModel(el);
-    return new QuiltedGridTile(el, model, index, opts);
-  }
-
   /** Read-only access to current model */
   getData(): QuiltedTile { return this.data; }
 
@@ -411,12 +397,26 @@ export class QuiltedGridTile {
     this.el.replaceChildren();
   }
 
-  private updateGridSpan(rows: number, cols: number) {
+  updateGridSpan(rows: number, cols: number) {
     const r = Math.max(1, rows || 1);
     const c = Math.max(1, cols || 1);
     this.el.style.gridRow = `span ${r}`;
     this.el.style.gridColumn = `span ${c}`;
     return this;
+  }
+
+  /** Create from a data model (no existing node) */
+  static fromModel(model: QuiltedTile, index: number, opts: QuiltedOptions) {
+    const el = document.createElement('div');
+    el.className = opts.classNames.tile;
+    return new QuiltedGridTile(el, model, index, opts);
+  }
+
+  /** Adopt an existing element */
+  static fromElement(wrapper: HTMLElement, index: number, opts: QuiltedOptions) {
+    const el = wrapper as HTMLElement;
+    const model = QuiltedGridTile.elementToModel(el);
+    return new QuiltedGridTile(el, model, index, opts);
   }
 
   static elementToModel(el: HTMLElement): QuiltedTile {
