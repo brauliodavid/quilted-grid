@@ -1,3 +1,5 @@
+import type { QuiltedGridTile } from "./quilted";
+
 export type QuiltedTile<T = unknown> = {
   rows?: number;
   cols?: number;
@@ -5,7 +7,7 @@ export type QuiltedTile<T = unknown> = {
 };
 
 export type ItemClickPayload = {
-  tile: QuiltedTile;
+  tile: QuiltedGridTile;
   index: number;
   event: MouseEvent;
 };
@@ -18,7 +20,7 @@ export type BaseOptions = {
   gap: number;
   autoResize: boolean;
   injectDefaultCSS: boolean;
-  onTileRemove?: (ev: {index: number, tile: QuiltedTile}) => void;
+  onTileRemove?: (ev: {index: number, tile: QuiltedGridTile}) => void;
   classNames: { root: string; tile: string };
   onTileClick?: (payload: ItemClickPayload) => void;
 };

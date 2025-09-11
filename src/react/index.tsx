@@ -26,7 +26,8 @@ export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
       if (!el) return;
 
       const domDrivenNow = el.childElementCount > 0;
-      gridRef.current = new QG(el, domDrivenNow ? [] : (data ?? []), options ?? {});
+      gridRef.current = new QG(el, options ?? {});
+      gridRef.current.tiles = domDrivenNow ? [] : (data ?? [])
 
       return () => {
         moRef.current?.disconnect();
@@ -43,7 +44,7 @@ export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
       const grid = gridRef.current;
       if (!el || !grid) return;
       if (el.childElementCount === 0) {
-        grid.setData(data ?? []);
+        grid.tiles = data ?? [];
       }
     }, [data]);
 
@@ -59,7 +60,8 @@ export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
 
       // Create core once. If there are children now → DOM-driven (constructor bootstraps from DOM).
       const domDrivenAtStart = host.childElementCount > 0;
-      const grid = new QG(host, domDrivenAtStart ? [] : (data ?? []), options ?? {});
+      const grid = new QG(host, options ?? {});
+      grid.tiles = domDrivenAtStart ? [] : (data ?? [])
       gridRef.current = grid;
 
       const DUR = 300; // keep in sync with your core animation duration

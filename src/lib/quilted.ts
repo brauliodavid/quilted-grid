@@ -6,14 +6,30 @@ import { readInt } from "./utils";
 export class QuiltedGrid {
   private el: HTMLElement;
   private opts: BaseOptions;
-  private data: QuiltedTile[];
   private ro?: ResizeObserver;
   private mounted = false;
+  private _tiles: QuiltedGridTile[];
 
   // keep and reuse tile instances
-  public tiles: QuiltedGridTile[] = [];
+  public set tiles(data: QuiltedTile[]) {
+    // destroy old instances and clear DOM
+    if (this._tiles?.length) {
+      for (const t of this._tiles) t.destroy();
+      this.el.innerHTML = '';
+    }
 
-  constructor(el: HTMLElement, data: QuiltedTile[] = [], opts: Partial<BaseOptions> = {}) {
+    this._tiles = (data || []).map((tile, i) =>
+      QuiltedGridTile.fromModel(tile, i, this.opts)
+    );
+
+    if (this.mounted) this.render();
+  }
+
+  public get tiles(): QuiltedGridTile[]{
+    return this._tiles;
+  }
+
+  constructor(el: HTMLElement, opts: Partial<QuiltedOptions> = {}) {
     if (!el) throw new Error('container element required');
 
     this.opts = {
@@ -28,17 +44,7 @@ export class QuiltedGrid {
 
     this.el = el;
 
-    // Choose data source:
-    // 1) If caller provided data OR container has no children -> use provided tiles
-    // 2) If container already has children -> bootstrap from DOM
-    if (data && data.length) {
-      this.data = data;
-    } else if (this.el.children.length > 0) {
-      this.data = [];
-      this.bootstrapFromDOM(); // fills tiles + tiles using existing children
-    } else {
-      this.data = [];
-    }
+    this.bootstrapFromDOM();
 
     if (this.opts.injectDefaultCSS) injectCSS();
     this.mount();
@@ -48,12 +54,16 @@ export class QuiltedGrid {
   /** Build this.tiles and this.tiles by inspecting existing child elements. */
   private bootstrapFromDOM() {
     const kids = Array.from(this.el.children) as HTMLElement[];
-    this.tiles  = kids.map((child, index) => QuiltedGridTile.fromElement(child, index, this.opts));
-    this.data = this.tiles.map(it => it.getModel());
+    // adopt elements; do not call the setter and do not call getData()
+    this._tiles = kids.map((child, index) =>
+      QuiltedGridTile.fromElement(child, index, this.opts)
+    );
   }
 
-  setData(data: QuiltedTile[]) { this.data = data || []; this.render(); return this; }
-  patchOptions(patch: Partial<QuiltedOptions>) { Object.assign(this.opts, patch); this.render(); return this; }
+  patchOptions(patch: Partial<QuiltedOptions>) { 
+    Object.assign(this.opts, patch); 
+    this.render();
+  }
 
   destroy() {
     this.ro?.disconnect();
@@ -65,7 +75,9 @@ export class QuiltedGrid {
 
   private mount() {
     if (this.mounted) return;
-    this.el.classList.add(this.opts.classNames.tile ? this.opts.classNames.root : 'qg-root');
+
+    const rootClass = this.opts.classNames?.root || 'qg-root';
+    this.el.classList.add(rootClass);
 
     if (this.opts.autoResize) {
       this.ro = new ResizeObserver(() => this.render());
@@ -105,45 +117,37 @@ export class QuiltedGrid {
     const cols = this.resolveCols();
     this.applyGridStyle(cols);
 
-    const targetLen = this.data.length;
+    // Remove any children that aren't our tile elements
+    const tileEls = new Set(this.tiles.map(t => t.el));
+    Array.from(this.el.children).forEach((child) => {
+      if (!tileEls.has(child as HTMLElement)) this.el.removeChild(child);
+    });
 
-    // Add missing tiles (if caller passed tiles but there were no DOM children)
-    while (this.tiles.length < targetLen) {
-      const idx = this.tiles.length;
-      this.createTileAt(idx, { animate: false });
-    }
-
-    // Remove extra tiles
-    while (this.tiles.length > targetLen) {
-      const tile = this.tiles.pop()!;
-      tile.destroy();
-      if (tile.el.parentNode === this.el) this.el.removeChild(tile.el);
-    }
-
-    // Sync content/spans
-    for (let i = 0; i < targetLen; i++) {
-      const it = this.data[i];
+    // Ensure order + update spans
+    for (let i = 0; i < this.tiles.length; i++) {
       const tile = this.tiles[i];
-      tile.setIndex(i).applyTile(it);
+      tile.setIndex(i).update(); // no args; uses current model
+
+      const ref = this.el.children[i] || null;
+      if (tile.el.parentNode !== this.el) {
+        this.el.insertBefore(tile.el, ref);
+      } else if (this.el.children[i] !== tile.el) {
+        this.el.insertBefore(tile.el, ref);
+      }
     }
   }
 
-  addTile(tile: QuiltedTile, opts: { index?: number, animate?: boolean } = {}) {
-    const index = Math.max(0, Math.min(opts.index ?? this.data.length, this.data.length));
-
-    // model
-    this.data.splice(index, 0, tile);
-
-    // tile (no full re-render needed)
-    return this.createTileAt(index, { animate: opts.animate !== false });
+  addTile(data: QuiltedTile, opts: { index?: number, animate?: boolean } = {}) {
+    const index = Math.max(0, Math.min(opts.index ?? this.tiles.length, this.tiles.length));
+    const tile  = QuiltedGridTile.fromModel(data, index, this.opts);
+    return this.insertTileAt(index, tile, { animate: opts.animate !== false });
   }
 
   /** Public: add a DOM element as a new tile */
   addTileElement(elm: HTMLElement, opts: { index?: number; animate?: boolean } = {}) {
-    const index = Math.max(0, Math.min(opts.index ?? this.data.length, this.data.length));
+    const index = Math.max(0, Math.min(opts.index ?? this.tiles.length, this.tiles.length));
 
     const tile = QuiltedGridTile.fromElement(elm, index, this.opts);
-    this.data.splice(index, 0, tile.getModel());
     this.tiles.splice(index, 0, tile);
 
     const ref = this.el.children[index] || null;
@@ -163,60 +167,66 @@ export class QuiltedGrid {
       tile.el.addEventListener('transitionend', onEnd, { once: true });
     }
 
-    tile.applyTile(tile.getModel());
+    tile.update(tile.getData());
     return tile;
   }
 
-  updateTileAt(index: number, patch: Partial<QuiltedTile>, opts: { reflow?: boolean } = {}) {
-    const { reflow = false } = opts;
-    const model = this.data[index];
-    if (!model) return this;
-
-    Object.assign(model, patch); // update model
+  updateTileAt(index: number, patch: Partial<QuiltedTile>, opts: { reflow?: boolean, animate?: boolean } = {}): void {
+    const { reflow = false, animate = true } = opts;
     const tile = this.tiles[index];
-    if (tile) tile.applyTile(model); // update tile view
+    if (!tile) return;
 
-    if (reflow) this.render(); // optional full reflow
-    return this;
+    const apply = () => tile.update(patch);
+    animate ? this.animate(apply) : apply();
+
+    if (reflow) this.render();
+  }
+
+  createTileAt(index: number, data: QuiltedTile, opts: { animate?: boolean } = {}): QuiltedGridTile {
+    const tile  = QuiltedGridTile.fromModel(data, index, this.opts);
+    return this.insertTileAt(index, tile, opts)
+  }
+
+  private insertTileAt(index: number, tile: QuiltedGridTile, opts: { animate?: boolean } = {}){
+    const ref = this.el.children[index] || null;
+    this.el.insertBefore(tile.el, ref);
+
+    this.tiles.splice(index, 0, tile);
+    for (let i = index; i < this.tiles.length; i++) this.tiles[i].setIndex(i);
+
+    if (opts.animate !== false) {
+      tile.el.classList.add('qg-enter');
+      void tile.el.offsetWidth;
+      tile.el.classList.add('qg-enter-active');
+      const onEnd = (e: TransitionEvent) => {
+        if (e.target !== tile.el) return;
+        tile.el.classList.remove('qg-enter', 'qg-enter-active');
+        tile.el.removeEventListener('transitionend', onEnd);
+      };
+      tile.el.addEventListener('transitionend', onEnd, { once: true });
+    }
+    return tile;
   }
 
   /** Remove one tile/tile by index. Optionally animates the reflow of remaining tiles. */
-  removeTileAt(index: number, opts: { animate?: boolean } = {}) {
+  removeTileAt(index: number, opts: { animate?: boolean } = {}): void {
     const { animate = true } = opts;
-
-    const model = this.data[index];
-    const cell  = this.tiles[index];
-    if (!model || !cell) return this;
+    const tile = this.tiles[index];
+    if (!tile) return;
 
     const doRemove = () => {
-      // 1) Update model
-      this.data.splice(index, 1);
-
-      // 2) Remove DOM + view instance
-      cell.destroy();
-      if (cell.el.parentNode === this.el) this.el.removeChild(cell.el);
-
-      // 3) Update tiles array and reindex following cells
-      this.tiles.splice(index, 1);
-      for (let i = index; i < this.tiles.length; i++) {
-        this.tiles[i].setIndex(i);
-      }
+      const [removed] = this.tiles.splice(index, 1); // remove once
+      removed?.destroy();
+      if (removed?.el.parentNode === this.el) this.el.removeChild(removed.el);
+      for (let i = index; i < this.tiles.length; i++) this.tiles[i].setIndex(i);
     };
 
-    if (animate) {
-      this.animate(doRemove);
-    } else {
-      doRemove();
-    }
+    if (animate) this.animate(doRemove); else doRemove();
 
-    // Notify via callback and DOM event
-    this.opts.onTileRemove?.({ index, tile: model });
+    this.opts.onTileRemove?.({ index, tile });
     this.el.dispatchEvent(new CustomEvent('tileRemoved', {
-      detail: { index, tile: model },
-      bubbles: true, cancelable: true, composed: true
+      detail: { index, tile }, bubbles: true, cancelable: true, composed: true
     }));
-
-    return this;
   }
 
   /** Animate any synchronous DOM mutation that changes layout */
@@ -285,28 +295,44 @@ export class QuiltedGrid {
     });
   }
 
-  private createTileAt(index: number, opts: { animate?: boolean } = {}) {
-    const model = this.data[index];
-    const tile  = QuiltedGridTile.fromModel(model, index, this.opts);
+  /**
+   * Rebuild everything from the current in-memory tiles.
+   * - Preserves each tile's inner content by moving child nodes.
+   * - Recreates wrapper elements and tile instances from their models.
+   */
+  refresh() {
+    // Ensure mounted so render() will apply grid styles
+    if (!this.mounted) this.mount();
 
-    const ref = this.el.children[index] || null;
-    this.el.insertBefore(tile.el, ref);
+    // 1) Snapshot models + extract content from existing wrappers
+    const snapshots = (this._tiles || []).map(t => {
+      // Move children out so we can reuse them (preserves listeners on child nodes)
+      const content = document.createDocumentFragment();
+      while (t.el.firstChild) content.appendChild(t.el.firstChild);
 
-    this.tiles.splice(index, 0, tile);
-    for (let i = index; i < this.tiles.length; i++) this.tiles[i].setIndex(i);
+      // Copy the current model (rows/cols/whatever QuiltedTile holds)
+      const model = { ...t.getData() };
 
-    if (opts.animate !== false) {
-      tile.el.classList.add('qg-enter');
-      void tile.el.offsetWidth;
-      tile.el.classList.add('qg-enter-active');
-      const onEnd = (e: TransitionEvent) => {
-        if (e.target !== tile.el) return;
-        tile.el.classList.remove('qg-enter', 'qg-enter-active');
-        tile.el.removeEventListener('transitionend', onEnd);
-      };
-      tile.el.addEventListener('transitionend', onEnd, { once: true });
+      return { model, content };
+    });
+
+    // 2) Remove old wrappers from the DOM and drop instances
+    for (const t of this._tiles || []) {
+      if (t.el.parentNode === this.el) this.el.removeChild(t.el);
+      // t.destroy() only clears children (already moved), so skipping is fine
     }
-    return tile;
+    this._tiles = [];
+
+    // 3) Recreate tiles from models, reattach preserved content, and append in order
+    snapshots.forEach(({ model, content }, i) => {
+      const tile = QuiltedGridTile.fromModel(model, i, this.opts);
+      tile.el.appendChild(content); // move back original children
+      this.el.appendChild(tile.el);
+      this._tiles.push(tile);
+    });
+
+    // 4) Re-apply grid styling and spans
+    this.render();
   }
 }
 
@@ -314,14 +340,14 @@ export class QuiltedGridTile {
   el: HTMLElement;
 
   private opts: BaseOptions;
-  private tile: QuiltedTile;
+  private data: QuiltedTile;
   private index: number;
 
   /** Use factories below */
   private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: BaseOptions) {
     this.opts = opts;
     this.el = el;
-    this.tile = model;
+    this.data = model;
     this.index = index;
 
     // Ensure class on wrapper
@@ -330,14 +356,14 @@ export class QuiltedGridTile {
     }
     // Wire click once
     this.el.addEventListener('click', (ev) => {
-      const payload = { tile: this.tile, index: this.index, event: ev };
+      const payload = { tile: this, index: this.index, event: ev };
       this.opts.onTileClick?.(payload);
       this.el.dispatchEvent(new CustomEvent('tileClick', {
         detail: payload, bubbles: true, cancelable: true, composed: true
       }));
     });
 
-    this.applyTile(this.tile);
+    this.update(this.data);
     this.setIndex(this.index);
   }
 
@@ -351,12 +377,12 @@ export class QuiltedGridTile {
   /** Adopt an existing element */
   static fromElement(wrapper: HTMLElement, index: number, opts: BaseOptions) {
     const el = wrapper as HTMLElement;
-    const { model } = QuiltedGridTile.elementToModel(el);
+    const model = QuiltedGridTile.elementToModel(el);
     return new QuiltedGridTile(el, model, index, opts);
   }
 
   /** Read-only access to current model */
-  getModel(): QuiltedTile { return this.tile; }
+  getData(): QuiltedTile { return this.data; }
 
   setIndex(i: number) {
     this.index = i;
@@ -364,27 +390,13 @@ export class QuiltedGridTile {
     return this;
   }
 
-  applyTile(patch: Partial<QuiltedTile>) {
-    Object.assign(this.tile, patch);
-    this.updateGridSpan(this.tile.rows ?? 1, this.tile.cols ?? 1);
-    return this;
-  }
-
-  updateGridSpan(rows: number, cols: number) {
-    const r = Math.max(1, rows || 1);
-    const c = Math.max(1, cols || 1);
-    this.el.style.gridRow = `span ${r}`;
-    this.el.style.gridColumn = `span ${c}`;
-    return this;
-  }
-
   update(patch?: Partial<QuiltedTile>): void {
     // 1) Merge patch (optional)
-    if (patch && typeof patch === 'object') Object.assign(this.tile, patch);
+    if (patch && typeof patch === 'object') Object.assign(this.data, patch);
 
     // 2) Normalize rows/cols
-    const rows = Math.max(1, this.tile.rows || 1);
-    const cols = Math.max(1, this.tile.cols || 1);
+    const rows = Math.max(1, this.data.rows || 1);
+    const cols = Math.max(1, this.data.cols || 1);
 
     // 3) Reflect rows/cols as attributes on the wrapper (useful for debugging/observers)
     if (this.el.getAttribute('rows') !== String(rows)) this.el.setAttribute('rows', String(rows));
@@ -392,18 +404,25 @@ export class QuiltedGridTile {
 
     // 4) Ensure styles reflect current spans
     // (applyTile already called updateGridSpan; this keeps things in sync if update() is called directly)
-    this.el.style.gridRow = `span ${rows}`;
-    this.el.style.gridColumn = `span ${cols}`;
+    this.updateGridSpan(rows, cols)
   }
 
   destroy() {
     this.el.replaceChildren();
   }
 
-  static elementToModel(el: HTMLElement) {
+  private updateGridSpan(rows: number, cols: number) {
+    const r = Math.max(1, rows || 1);
+    const c = Math.max(1, cols || 1);
+    this.el.style.gridRow = `span ${r}`;
+    this.el.style.gridColumn = `span ${c}`;
+    return this;
+  }
+
+  static elementToModel(el: HTMLElement): QuiltedTile {
     const rows   = readInt(el, 'rows', 1);
     const cols   = readInt(el, 'cols', 1);
-    return { model: { rows, cols } as QuiltedTile};
+    return { rows, cols };
   }
 }
 

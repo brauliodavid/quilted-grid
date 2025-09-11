@@ -7,12 +7,12 @@ const images: QT[] = items
 
 export default function App() {
   const ref = useRef<QuiltedGridRef>(null);
-  const [gallery, setGallery] = useState<QG>(null);
+  const [grid, setGrid] = useState<QG>(null);
   const [ordered, setOrdered] = useState<any[]>([])
 
   useEffect(() => {
     if(ref?.current){
-      setGallery(ref.current.grid as any)
+      setGrid(ref.current.grid as any)
     }
 
     setTimeout(() => {
@@ -36,12 +36,11 @@ export default function App() {
   }, [ref])
 
   const add = () => {
-    gallery?.addTile(images[2])
+    grid?.addTile(images[2])
   };
 
   const relayout = () => {
-    gallery?.destroy()
-    gallery?.render()
+    grid.refresh()
   };
 
   const onClick = (e) => {
