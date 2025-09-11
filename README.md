@@ -11,23 +11,22 @@ Use it two ways:
 
 ## Install
 
-npm i quilted-grid
-# or
-pnpm add quilted-grid
-# or
-yarn add quilted-grid
+`npm i quilted-grid`
 
 ---
 
 ## Quick start (DOM-driven)
 
 <!-- HTML -->
+```html
 <div id="grid">
   <div rows="2" cols="3"><img src="/a.jpg"></div>
   <div rows="1" cols="2"><img src="/b.jpg"></div>
 </div>
+```
 
 <!-- JS/TS -->
+```javascript
 import { QuiltedGrid } from 'quilted-grid';
 
 const el = document.getElementById('grid')!;
@@ -40,13 +39,14 @@ const grid = new QuiltedGrid(el, {
 
 // Update a tile’s span (with FLIP animation)
 grid.updateTileAt(0, { rows: 1, cols: 1 }, { animate: true });
+```
 
 NOTE: Attributes are `rows` and `cols` (not `data-rows` / `data-cols`).
-
 ---
 
 ## Quick start (Data-driven)
 
+```javascript
 import { QuiltedGrid, type QuiltedTile } from 'quilted-grid';
 
 const data: QuiltedTile[] = [
@@ -62,15 +62,12 @@ grid.tiles = data;
 
 // Add more later (with enter transition)
 grid.addTile({ rows: 1, cols: 1 }, { index: 1, animate: true });
-
+```
 ---
 
 ## API
 
 ### Constructor
-
-new QuiltedGrid(el: HTMLElement, options?: Partial<QuiltedOptions>)
-
 - el — container element (required)
 - options — see QuiltedOptions
 
@@ -88,12 +85,13 @@ type QuiltedOptions = {
 };
 
 ### Tile model
-
+```javascript
 type QuiltedTile = {
   rows?: number;  // default 1
   cols?: number;  // default 1
   // ...custom fields are fine; only rows/cols affect layout
 };
+```
 
 ### Properties
 
