@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.1.0] - 2025-09-11
+
 ## [1.0.0] - 2025-09-11
 
 ### Added
@@ -45,5 +47,6 @@ CDN:
 
 - None.
 
-[unreleased]: https://github.com/brauliodavid/quilted-grid/compare/1.0.0...HEAD
+[unreleased]: https://github.com/brauliodavid/quilted-grid/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/brauliodavid/quilted-grid/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/brauliodavid/quilted-grid/compare/733e833f297cde5527db36a294c98e91197d66a4...1.0.0
