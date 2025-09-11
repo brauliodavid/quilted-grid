@@ -1,72 +1,147 @@
 import React, {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useRef,
+  forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef,
 } from "react";
 import { QuiltedGrid as QG } from "../index";
 import type { QuiltedTile as QT, QuiltedOptions } from "../index";
 
 export type QuiltedGridRef = { readonly grid: QG | null };
-
 export type QuiltedGridProps = React.HTMLAttributes<HTMLDivElement> & {
-  /** If children are provided, DOM-driven mode is used. If not, data-driven. */
   data?: QT[];
   options?: Partial<QuiltedOptions>;
 };
-
 export type QuiltedTileProps = React.HTMLAttributes<HTMLDivElement> & {
   rows?: number;
   cols?: number;
 };
 
 export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
-  ({ data, options, className, style, children }, ref) => {
+  ({ data, options, className, style, children, ...rest }, ref) => {
     const mountRef = useRef<HTMLDivElement | null>(null);
     const gridRef = useRef<QG | null>(null);
-    const domDrivenRef = useRef<boolean>(false);
+    const moRef = useRef<MutationObserver | null>(null);
 
-    // Create once (after children are committed to the DOM)
+    // 1) Create core once (mount). If children exist at that moment → DOM-driven; else data-driven.
     useLayoutEffect(() => {
       const el = mountRef.current;
       if (!el) return;
 
-      // Children present? -> DOM-driven
-      domDrivenRef.current = el.childElementCount > 0;
-
-      // If DOM-driven, let QG bootstrap from existing children; else use data
-      const initialData = domDrivenRef.current ? [] : (data ?? []);
-      gridRef.current = new QG(el, initialData, options ?? {});
+      const domDrivenNow = el.childElementCount > 0;
+      gridRef.current = new QG(el, domDrivenNow ? [] : (data ?? []), options ?? {});
 
       return () => {
-        // On unmount, clean up. (This may clear the node; that's okay on unmount.)
+        moRef.current?.disconnect();
+        moRef.current = null;
         gridRef.current?.destroy?.();
         gridRef.current = null;
       };
-      // IMPORTANT: create once; do NOT depend on children/options here
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Keep data in sync only in data-driven mode
+    // 2) If we started data-driven, keep data in sync
     useEffect(() => {
-      if (!domDrivenRef.current) gridRef.current?.setData(data ?? []);
+      const el = mountRef.current;
+      const grid = gridRef.current;
+      if (!el || !grid) return;
+      if (el.childElementCount === 0) {
+        grid.setData(data ?? []);
+      }
     }, [data]);
 
-    // Keep options in sync (patch only, no re-create)
+    // 3) Patch options without recreating
     useEffect(() => {
       if (options) gridRef.current?.patchOptions(options);
     }, [options]);
 
-    useImperativeHandle(
-      ref,
-      () => ({ get grid() { return gridRef.current; } }),
-      []
-    );
+    // 4) Adopt children that show up after mount (DOM-driven late)
+    useLayoutEffect(() => {
+      const host = mountRef.current;
+      if (!host) return;
+
+      // Create core once. If there are children now → DOM-driven (constructor bootstraps from DOM).
+      const domDrivenAtStart = host.childElementCount > 0;
+      const grid = new QG(host, domDrivenAtStart ? [] : (data ?? []), options ?? {});
+      gridRef.current = grid;
+
+      const DUR = 300; // keep in sync with your core animation duration
+      let paused = false;
+
+      // Observe only direct child adds/removes. We’ll ignore our own mutations.
+      const mo = new MutationObserver((mutations) => {
+        if (paused) return;
+        const g = gridRef.current;
+        const el = mountRef.current;
+        if (!g || !el) return;
+
+        const adds: Array<{ node: HTMLElement; index: number }> = [];
+        const removeIdx: number[] = [];
+
+        for (const m of mutations) {
+          // Collect additions (direct children only)
+          m.addedNodes.forEach((n) => {
+            if (!(n instanceof HTMLElement)) return;
+            if (n.parentElement !== el) return; // only direct children of host
+            // Skip if grid already owns this element
+            const owned = (g as any)?.tiles?.some((t: any) => t?.el === n);
+            if (owned) return;
+
+            // Hide immediately so it doesn't affect FIRST; we’ll show after adoption
+            (n as HTMLElement).style.display = 'none';
+
+            const index = Array.prototype.indexOf.call(el.children, n);
+            adds.push({ node: n as HTMLElement, index });
+          });
+
+          // Collect removals: map element -> tile index
+          m.removedNodes.forEach((n) => {
+            if (!(n instanceof HTMLElement)) return;
+            const idx = (g as any)?.tiles?.findIndex((t: any) => t?.el === n) ?? -1;
+            if (idx >= 0) removeIdx.push(idx);
+          });
+        }
+
+        if (adds.length === 0 && removeIdx.length === 0) return;
+
+        // Prevent re-entrancy while we mutate.
+        paused = true;
+        mo.disconnect();
+
+        // Batch in a single FLIP animation
+        g.animate(() => {
+          // Remove from highest index to keep indices valid
+          removeIdx.sort((a, b) => b - a).forEach((idx) => g.removeTileAt(idx, { animate: false }));
+
+          // Adopt new nodes at their intended indices; reveal them after adoption
+          adds.forEach(({ node, index }) => {
+            g.addTileElement(node, { index, animate: true });
+            (node as HTMLElement).style.display = '';
+          });
+        }, { duration: DUR });
+
+        // Reattach observer after animation so we don't capture our own inserts
+        setTimeout(() => {
+          if (!host.isConnected) return;
+          mo.observe(host, { childList: true });
+          paused = false;
+        }, DUR + 40);
+      });
+
+      // Start observing future changes only (constructor already bootstrapped initial children)
+      mo.observe(host, { childList: true });
+
+      return () => {
+        paused = true;
+        mo.disconnect();
+        grid.destroy?.();
+        gridRef.current = null;
+      };
+      // IMPORTANT: empty deps — create once; MO handles children changes
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useImperativeHandle(ref, () => ({ get grid() { return gridRef.current; } }), []);
 
     return (
-      <div ref={mountRef} className={className} style={style}>
-        {/* In DOM-driven mode, these are the tiles QG adopts on mount */}
+      <div ref={mountRef} className={className} style={style} {...rest}>
         {children}
       </div>
     );
