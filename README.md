@@ -11,11 +11,7 @@ Use it two ways:
 
 ## Install
 
-npm i quilted-grid
-# or
-pnpm add quilted-grid
-# or
-yarn add quilted-grid
+`npm i quilted-grid`
 
 ---
 
@@ -89,12 +85,13 @@ type QuiltedOptions = {
 };
 
 ### Tile model
-
+```javascript
 type QuiltedTile = {
   rows?: number;  // default 1
   cols?: number;  // default 1
   // ...custom fields are fine; only rows/cols affect layout
 };
+```
 
 ### Properties
 

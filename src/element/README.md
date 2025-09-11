@@ -1,10 +1,5 @@
 # Quilted Grid — Web Components
 
-Custom elements for declarative authoring:
-
-- <quilted-grid>
-- <quilted-tile rows="2" cols="3">
-
 ## Install
 
 `npm i quilted-grid`
