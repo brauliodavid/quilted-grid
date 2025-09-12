@@ -5,7 +5,7 @@ import { readInt } from "./utils";
 // src/lib/quilted.ts
 export class QuiltedGrid {
   private el: HTMLElement;
-  private opts: Partial<QuiltedOptions>;
+  private opts: QuiltedOptions;
   private ro?: ResizeObserver;
   private mounted = false;
   private _tiles: QuiltedGridTile[];
@@ -29,7 +29,7 @@ export class QuiltedGrid {
     return this._tiles;
   }
 
-  constructor(el: HTMLElement, opts: Partial<QuiltedOptions> = {}) {
+  constructor(el: HTMLElement, opts: QuiltedOptions = {}) {
     if (!el) throw new Error('container element required');
 
     this.opts = {
@@ -60,7 +60,7 @@ export class QuiltedGrid {
     );
   }
 
-  patchOptions(patch: Partial<QuiltedOptions>) { 
+  patchOptions(patch: QuiltedOptions) { 
     Object.assign(this.opts, patch); 
     this.render();
   }
@@ -126,7 +126,8 @@ export class QuiltedGrid {
     // Ensure order + update spans
     for (let i = 0; i < this.tiles.length; i++) {
       const tile = this.tiles[i];
-      tile.setIndex(i).update(); // no args; uses current model
+      tile.setIndex(i)
+      tile.update(); // no args; uses current model
 
       const ref = this.el.children[i] || null;
       if (tile.el.parentNode !== this.el) {
@@ -339,12 +340,12 @@ export class QuiltedGrid {
 export class QuiltedGridTile {
   el: HTMLElement;
 
-  private opts: Partial<QuiltedOptions>;
+  private opts: QuiltedOptions;
   private data: QuiltedTile;
   private index: number;
 
   /** Use factories below */
-  private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: Partial<QuiltedOptions>) {
+  private constructor(el: HTMLElement, model: QuiltedTile, index: number, opts: QuiltedOptions) {
     this.opts = opts;
     this.el = el;
     this.data = model;
@@ -367,27 +368,12 @@ export class QuiltedGridTile {
     this.setIndex(this.index);
   }
 
-  /** Create from a data model (no existing node) */
-  static fromModel(model: QuiltedTile, index: number, opts: Partial<QuiltedOptions>) {
-    const el = document.createElement('div');
-    el.className = opts.classNames.tile;
-    return new QuiltedGridTile(el, model, index, opts);
-  }
-
-  /** Adopt an existing element */
-  static fromElement(wrapper: HTMLElement, index: number, opts: Partial<QuiltedOptions>) {
-    const el = wrapper as HTMLElement;
-    const model = QuiltedGridTile.elementToModel(el);
-    return new QuiltedGridTile(el, model, index, opts);
-  }
-
   /** Read-only access to current model */
   getData(): QuiltedTile { return this.data; }
 
-  setIndex(i: number) {
+  setIndex(i: number): void {
     this.index = i;
     this.el.dataset.index = String(i);
-    return this;
   }
 
   update(patch?: Partial<QuiltedTile>): void {
@@ -411,12 +397,26 @@ export class QuiltedGridTile {
     this.el.replaceChildren();
   }
 
-  private updateGridSpan(rows: number, cols: number) {
+  updateGridSpan(rows: number, cols: number) {
     const r = Math.max(1, rows || 1);
     const c = Math.max(1, cols || 1);
     this.el.style.gridRow = `span ${r}`;
     this.el.style.gridColumn = `span ${c}`;
     return this;
+  }
+
+  /** Create from a data model (no existing node) */
+  static fromModel(model: QuiltedTile, index: number, opts: QuiltedOptions) {
+    const el = document.createElement('div');
+    el.className = opts.classNames.tile;
+    return new QuiltedGridTile(el, model, index, opts);
+  }
+
+  /** Adopt an existing element */
+  static fromElement(wrapper: HTMLElement, index: number, opts: QuiltedOptions) {
+    const el = wrapper as HTMLElement;
+    const model = QuiltedGridTile.elementToModel(el);
+    return new QuiltedGridTile(el, model, index, opts);
   }
 
   static elementToModel(el: HTMLElement): QuiltedTile {

@@ -12,17 +12,17 @@ export type ItemClickPayload = {
   event: MouseEvent;
 };
 
-// export type QuiltedOptions = Partial<BaseOptions>;
+export type QuiltedOptions = Partial<BaseOptions>;
 
-export type QuiltedOptions = {
+export type BaseOptions = {
   cols: number | ((containerWidth: number) => number);
   rowHeight: number;
   gap: number;
   autoResize: boolean;
   injectDefaultCSS: boolean;
-  onTileRemove?: (ev: {index: number, tile: QuiltedGridTile}) => void;
+  onTileRemove: (ev: {index: number, tile: QuiltedGridTile}) => void;
   classNames: { root: string; tile: string };
-  onTileClick?: (payload: ItemClickPayload) => void;
+  onTileClick: (payload: ItemClickPayload) => void;
 };
 
 export interface QuiltedInput {
