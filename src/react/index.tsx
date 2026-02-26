@@ -1,11 +1,12 @@
 import React, {
   forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef
 } from "react";
-import { QuiltedGrid as QG } from "quilted-grid";
-import type { QuiltedOptions } from "quilted-grid";
+import { QuiltedGrid as QG } from "../lib/quilted";
+import type { QuiltedOptions, QuiltedTile as QT } from "../lib/types";
 
 export type QuiltedGridRef = { readonly grid: QG | null };
 export type QuiltedGridProps = React.HTMLAttributes<HTMLDivElement> & {
+  data?: QT[];
   options?: QuiltedOptions;
   onReady?: (grid: QG) => void; // optional convenience
 };
@@ -14,27 +15,44 @@ export type QuiltedTileProps = React.HTMLAttributes<HTMLDivElement> & {
 };
 
 export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
-  ({ options, className, style, children, onReady, ...rest }, ref) => {
+  ({ data, options, className, style, children, onReady, ...rest }, ref) => {
     const hostRef = useRef<HTMLDivElement | null>(null);
     const gridRef = useRef<QG | null>(null);
 
-    // init core (idempotent, StrictMode safe)
+    // init core (StrictMode-safe: each setup has its own cleanup)
     useLayoutEffect(() => {
-      const host = hostRef.current!;
-      if (!gridRef.current) {
-        gridRef.current = new QG(host, options ?? {});
-        onReady?.(gridRef.current); // fire once per real init
+      const host = hostRef.current;
+      if (!host) return;
+
+      const grid = new QG(host, options ?? {});
+      gridRef.current = grid;
+      onReady?.(grid);
+
+      // data-driven mode only when there are no DOM children to adopt
+      if (host.childElementCount === 0) {
+        grid.tiles = data ?? [];
       }
+
       return () => {
-        gridRef.current?.destroy();
+        grid.destroy();
         gridRef.current = null;
       };
-    }, []); // no inited flag
+    }, []);
 
     // keep options hot
     useEffect(() => {
       if (options) gridRef.current?.patchOptions(options);
     }, [options]);
+
+    // data-driven updates only when host has no React child nodes
+    useEffect(() => {
+      const host = hostRef.current;
+      const grid = gridRef.current;
+      if (!host || !grid) return;
+      if (host.childElementCount === 0) {
+        grid.tiles = data ?? [];
+      }
+    }, [data]);
 
     // reconcile after each children change
     useLayoutEffect(() => {
@@ -46,29 +64,28 @@ export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
 
       // 1) adopt new in order
       els.forEach((node, visualIndex) => {
-        const ownedIdx =
-          ((grid as any).tiles?.findIndex((t: any) => t?.el === node) ?? -1);
-        if (ownedIdx === -1) {
+        const ownedIdx = grid.tiles.findIndex((t) => t.el === node);
+        if (ownedIdx < 0) {
           grid.addTileElement(node, { index: visualIndex, animate: true });
         }
       });
 
       // 2) match order
       {
-        const tiles = (grid as any).tiles as any[];
+        const tiles = grid.tiles;
         els.forEach((node, visualIndex) => {
-          const ownedIdx = tiles.findIndex((t: any) => t.el === node);
-          if (ownedIdx !== visualIndex) {
+          const ownedIdx = tiles.findIndex((t) => t.el === node);
+          if (ownedIdx >= 0 && ownedIdx !== visualIndex) {
             const [tile] = tiles.splice(ownedIdx, 1);
             tiles.splice(visualIndex, 0, tile);
           }
         });
-        (grid as any).tiles.forEach((t: any, i: number) => t.setIndex(i));
+        grid.tiles.forEach((tile, i) => tile.setIndex(i));
       }
 
       // 3) remove missing
       {
-        const tiles = (grid as any).tiles as any[] || [];
+        const tiles = grid.tiles;
         for (let i = tiles.length - 1; i >= 0; i--) {
           if (tiles[i].el.parentElement !== host) {
             grid.removeTileAt(i, { animate: false });
@@ -78,7 +95,6 @@ export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
 
       // 4) sync spans from DOM attrs → model (single FLIP)
       grid.animate(() => {
-        const tiles = (grid as any).tiles as any[];
         els.forEach((el, i) => {
           const rows = parseInt(el.getAttribute("data-rows") || "1", 10) || 1;
           const cols = parseInt(el.getAttribute("data-cols") || "1", 10) || 1;
@@ -98,6 +114,7 @@ export const QuiltedGrid = forwardRef<QuiltedGridRef, QuiltedGridProps>(
     );
   }
 );
+QuiltedGrid.displayName = "QuiltedGrid";
 
 export default QuiltedGrid;
 
