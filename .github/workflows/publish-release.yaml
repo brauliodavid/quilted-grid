@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: write     # create releases, push tags
-  id-token: write     # npm provenance support
+  id-token: write     # required for npm trusted publishing (OIDC)
   pull-requests: write
 
 jobs:
@@ -46,8 +46,16 @@ jobs:
       - name: Set Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
+
+      - name: Ensure npm supports trusted publishing
+        shell: bash
+        run: |
+          echo "Node: $(node -v)"
+          echo "npm:  $(npm -v)"
+          npm install -g npm@^11.5.1
+          echo "npm (updated): $(npm -v)"
 
       # Ensure pnpm is installed and active
       - name: Enable Corepack / Install pnpm
@@ -99,20 +107,11 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      # publish only if version not on npm AND token is present
+      # publish only if this version does not exist yet
       - name: Publish to npm
         if: ${{ steps.check_npm.outputs.exists == 'false' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # If your package is scoped (e.g. @you/quilted-grid),
-          # ensure package.json includes: "publishConfig": { "access": "public" }
-          pnpm publish --access public --provenance --no-git-checks
-
-      # Optional: log when token missing (helps debugging)
-      - name: Skip publish (no NPM_TOKEN)
-        if: ${{ steps.check_npm.outputs.exists == 'false' }}
-        run: echo "NPM_TOKEN not set; skipping npm publish."
+          npm publish --access public --provenance --ignore-scripts
 
       # Pack dist as a release asset
       - name: Pack dist
@@ -149,4 +148,3 @@ jobs:
             This happens to ensure that the updates that happend on the release branch, i.e. CHANGELOG and manifest updates are also present on the develop branch.
       # if needed, you can checkout the latest main here, build artifacts and publish / deploy them somewhere
       # the create-release action has an output `upload_url` output that you can use to upload assets
-
